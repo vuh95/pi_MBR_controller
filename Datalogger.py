@@ -12,7 +12,7 @@ from adafruit_ads1x15.analog_in import AnalogIn
 # Create the I2C bus
 i2c = busio.I2C(board.SCL, board.SDA)
 
-# you can specify an I2C adress 
+# you can specify an I2C address 
 ads1 = ADS.ADS1115(i2c, address=0x48)
 ads2 = ADS.ADS1115(i2c, address=0x49)
 ads3 = ADS.ADS1115(i2c, address=0x4A)
@@ -38,7 +38,7 @@ OUTPUTPATH = "./Data/adc.csv"
 TIMEFORMAT = "%Y/%m/%d %H:%M:%S"
 count = 0
 check_file = os.path.exists(OUTPUTPATH)
-if check_file == False: # Creat file if not exist.
+if check_file == False: # Create file if not exist.
     f = open(OUTPUTPATH, "a", newline="")
     csv.writer(f).writerow(['Time'] +
                             ['DO_1'] + ['Temp_1'] + ['Flow_1'] + ['P_1'] + 
