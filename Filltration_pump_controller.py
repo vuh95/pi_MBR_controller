@@ -95,7 +95,7 @@ while True:
         if current_weight > 3500:
             GPIO.output(Discharge_pump_pin, 1)
             Filtration_pump.ChangeDutyCycle(0)
-            time.sleep (15)
+            time.sleep (20)
             time_count = 0
             flowrate_now = 0
             current_time = time.time()
@@ -112,7 +112,7 @@ while True:
         #Caculate flowrate
         flowrate_now = ((current_weight - last_weight) *60 / (current_time - last_time))
 
-        if time_count < 10:
+        if time_count < 15:
             Filtration_pump.ChangeDutyCycle(PWM)
             pid.reset()
 
@@ -161,11 +161,12 @@ while True:
             f.close()
             print (now)
             print (flowrate_now)
+            print (PWM)
         
         last_time = current_time
         last_weight = current_weight
         
-        time.sleep(2 - time.time() % 2)
+        time.sleep(10 - time.time() % 10)
     
     except Exception as EXC:
         print (EXC)
