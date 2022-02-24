@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 #set GPIO pin
-Scale_pin = [5,6]
-Feed_pump_pin = 13 
+Scale_pin = [18,15]
+Feed_pump_pin = 26 
 
-Scale_offset = 1
-Scale_ratio = 1
+Scale_offset = -88000
+Scale_ratio = 58.114
 
 import RPi.GPIO as GPIO  # import GPIO
 from hx711 import HX711  # import the class HX711
@@ -35,12 +35,12 @@ except Exception as ee:
 
 def get_value():
     value = scale.get_weight_mean(5)
-    if Scale_value != False:
+    if value != False:
         return value
     else:
         return ""
 
-OUTPUTPATH = '~/Data/data_scale.csv'
+OUTPUTPATH = './data/data_scale.csv'
 TIMEFORMAT = "%Y/%m/%d %H:%M:%S"
 
 try:
@@ -51,14 +51,15 @@ try:
             continue
         elif Scale_value < 15500:
                 GPIO.output(Feed_pump_pin, 1)
-        elif Scale_value > 15500:
+        elif Scale_value > 15800:
                 GPIO.output(Feed_pump_pin, 0)
 
         f = open(OUTPUTPATH, 'a', newline='')
-        csv.writer(f).writerow([now] + Scale_value)
+        csv.writer(f).writerow([now] + [Scale_value])
         f.close()
-        time.sleep(5 - time.time() % 5)
-
+        print("{:>5}\t{:>5.1f}".format(now, Scale_value))
+        time.sleep(10 - time.time() % 10)
 except:
-    print ("error")
+    GPIO.output(Feed_pump_pin, 0)
+
 
