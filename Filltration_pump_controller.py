@@ -17,7 +17,7 @@ error_count = 0
 #Set up scale date file, output file and time format
 import os
 scale_port = '/dev/ttyUSB0'
-OUTPUTPATH = 'MBR_Flowrate.csv'
+OUTPUTPATH = './data/MBR_Flowrate.csv'
 TIMEFORMAT = "%Y/%m/%d %H:%M:%S"
 
 #GPIO configaration
@@ -79,12 +79,10 @@ def get_scale_value():
     data = Scale_serial.getLastLine()
     data = data.split(",")[1].split(" ")[0]
     data = data.replace('\x00', '')
-    print (data)
     data = float (data)
     
     return data
     
-Discharging_start_time = 0
 Filtration_pump.ChangeDutyCycle(PWM)
 time.sleep (1)
 start_time = time.time()
@@ -102,7 +100,8 @@ while True:
         if current_weight > 3500:
             GPIO.output(Discharge_pump_pin, 1)
             Filtration_pump.ChangeDutyCycle(0)
-            time.sleep (20)
+            time.sleep (10)
+            GPIO.output(Discharge_pump_pin, 0)
             time_count = 0
             flowrate_now = 0
             current_time = time.time()
@@ -127,12 +126,11 @@ while True:
             
             Filtration_pump.ChangeDutyCycle(0)
             
-            if current_weight > 2500 and time_count > 500:
+            if time_count > 500 and time_count < 510:
                 GPIO.output(Discharge_pump_pin, 1)
                 Discharging = True
-                Discharging_start_time = current_time
 
-            if Discharging_start_time - current_time > 10:
+            if time_count > 510 and current_weight < 1500:
                 GPIO.output(Discharge_pump_pin, 0)
                 Discharging = False
 
@@ -163,16 +161,10 @@ while True:
         
         p, i, d = pid.components
 
-        if any(d for d in [current_time]):
-            f = open(OUTPUTPATH, 'a', newline='')
-            csv.writer(f).writerow([now] + [current_weight] + [flowrate_now] + [flowrate])
-            f.close()
-            print("{:>5.1f}\t{:>5.1f}\t{:>5.1f}\t{:>5.1f}".format(time_count,flowrate_now, current_weight, PWM))
-            #print (time_count)
-            #print("{:>5}\t{:>5.1f}".format("Flow", flowrate_now))
-            #print("{:>5}\t{:>5.1f}".format("W", current_weight))
-            #print("{:>5}\t{:>5.1f}".format("PWM",PWM))
-            #print("{:>5.1f}\t{:>5.1f}\t{:>5.1f}".format(p, i, d))
+        f = open(OUTPUTPATH, 'a', newline='')
+        csv.writer(f).writerow([now] + [current_weight] + [flowrate_now] + [flowrate])
+        f.close()
+        print("{:>5.1f}\t{:>5.1f}\t{:>5.1f}\t{:>5.1f}".format(time_count,flowrate_now, current_weight, PWM))
 
         last_time = current_time
         last_weight = current_weight
