@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 #set GPIO pin
-Scale_pin = [5,6]
+Scale_pin = [18,15]
 Feed_pump_pin = 13 
 
-Scale_offset = 1
-Scale_ratio = 1
+Scale_offset = -240500
+Scale_ratio = 57.1662
 
 import RPi.GPIO as GPIO  # import GPIO
 from hx711 import HX711  # import the class HX711
@@ -40,25 +40,24 @@ def get_value():
     else:
         return ""
 
-OUTPUTPATH = '~/Data/data_scale.csv'
+OUTPUTPATH = './data/data_scale.csv'
 TIMEFORMAT = "%Y/%m/%d %H:%M:%S"
 
-try:
-    while True:
-        now = datetime.now().strftime(TIMEFORMAT)
-        Scale_value = get_value()
-        if Scale_value == "":
-            continue
-        elif Scale_value < 15500:
-                GPIO.output(Feed_pump_pin, 1)
-        elif Scale_value > 15500:
-                GPIO.output(Feed_pump_pin, 0)
 
-        f = open(OUTPUTPATH, 'a', newline='')
-        csv.writer(f).writerow([now] + Scale_value)
-        f.close()
-        time.sleep(5 - time.time() % 5)
+while True:
+    now = datetime.now().strftime(TIMEFORMAT)
+    Scale_value = get_value()
+    if Scale_value == "":
+        continue
+    elif Scale_value < 15500:
+            GPIO.output(Feed_pump_pin, 1)
+    elif Scale_value > 15500:
+            GPIO.output(Feed_pump_pin, 0)
 
-except:
-    print ("error")
+    f = open(OUTPUTPATH, 'a', newline='')
+    csv.writer(f).writerow([now] + Scale_value)
+    f.close()
+    time.sleep(10 - time.time() % 10)
+
+
 
