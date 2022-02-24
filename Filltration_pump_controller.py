@@ -4,7 +4,7 @@ targetFlow = 40 #ml/min
 
 #Set GPIO
 Filtration_pump_pin = 13 
-Discharge_pump_pin = 11
+Discharge_pump_pin = 21
 
 #Set up PID parameter
 PWM = 50
@@ -15,7 +15,7 @@ D = 0.05
 
 #Set up scale date file, output file and time format
 scale_port = '/dev/ttyUSB0'
-OUTPUTPATH = 'MBR_Flowrate.csv'
+OUTPUTPATH = './data/MBR_Flowrate.csv'
 TIMEFORMAT = "%Y/%m/%d %H:%M:%S"
 
 #GPIO configaration
@@ -38,6 +38,8 @@ import csv
 from datetime import datetime
 
 import serial
+import os
+
 class mySerial(serial.Serial):
     # varible to store lines
     buf: bytes = b""
@@ -61,22 +63,26 @@ class mySerial(serial.Serial):
         return self.last_line
 
 def get_scale_value():
-    data = mySerial(
-        port = scale_port,
-        baudrate = 2400,
-        parity = serial.PARITY_EVEN,
-        stopbits = serial.STOPBITS_ONE,
-        bytesize = serial.SEVENBITS,
-        timeout = None,
-    ).getLastLine()
-    data = data[4:12]
-    data = float ("".join(data[0]))
+    while 1:
+        try:
+            data = mySerial(
+                port = scale_port,
+                baudrate = 2400,
+                parity = serial.PARITY_EVEN,
+                stopbits = serial.STOPBITS_ONE,
+                bytesize = serial.SEVENBITS,
+                timeout = None,
+                ).getLastLine()
+            data = data[4:12]
+            data = float (data)
+            break
+        except:
+            continue
+
     return data
 
 start_time = time.time()
-Filtration_pump.ChangeDutyCycle(50)
-time.sleep(5)
-last_time = time.time()
+last_time = start_time
 last_weight = get_scale_value() 
 time.sleep(5)
 
@@ -89,7 +95,7 @@ while True:
         if current_weight > 3500:
             GPIO.output(Discharge_pump_pin, 1)
             Filtration_pump.ChangeDutyCycle(0)
-            time.sleep (15)
+            time.sleep (20)
             time_count = 0
             flowrate_now = 0
             current_time = time.time()
@@ -106,7 +112,7 @@ while True:
         #Caculate flowrate
         flowrate_now = ((current_weight - last_weight) *60 / (current_time - last_time))
 
-        if time_count < 10:
+        if time_count < 15:
             Filtration_pump.ChangeDutyCycle(PWM)
             pid.reset()
 
@@ -153,13 +159,14 @@ while True:
             f = open(OUTPUTPATH, 'a', newline='')
             csv.writer(f).writerow([now] + [current_weight] + [flowrate_now] + [flowrate])
             f.close()
-            print('time in min',"{:.1f}".format((current_weight - start_time)/60))  
-            print ('flow', "{:.1f}".format(flowrate_now))
+            print (now)
+            print (flowrate_now)
+            print (PWM)
         
         last_time = current_time
         last_weight = current_weight
         
-        time.sleep(5 - time.time() % 5)
+        time.sleep(10 - time.time() % 10)
     
     except Exception as EXC:
         print (EXC)
