@@ -1,24 +1,27 @@
 #!/usr/bin/env python3
 #Set target flowrate
-targetFlow = 40 #ml/min
+targetFlow = 30 #ml/min
 
 #Set GPIO
 Filtration_pump_pin = 13 
-Discharge_pump_pin = 21
+Discharge_pump_pin = 19
 
 #Set up PID parameter
-PWM = 50
+PWM = 29
 P = 0.30
 I = 0.000
 D = 0.05
 
+error_count = 0
 
 #Set up scale date file, output file and time format
+import os
 scale_port = '/dev/ttyUSB0'
-OUTPUTPATH = './data/MBR_Flowrate.csv'
+OUTPUTPATH = 'MBR_Flowrate.csv'
 TIMEFORMAT = "%Y/%m/%d %H:%M:%S"
 
 #GPIO configaration
+from distutils.log import error
 import RPi.GPIO as GPIO
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
@@ -31,14 +34,13 @@ GPIO.output(Discharge_pump_pin, 0)
 #Set up PID controller
 from simple_pid import PID
 pid = PID(P, I, D, setpoint=targetFlow)
-pid.output_limits = (-25, 25)
+pid.output_limits = (-5, 5)
 
 import time
 import csv
 from datetime import datetime
 
 import serial
-import os
 
 class mySerial(serial.Serial):
     # varible to store lines
@@ -49,7 +51,8 @@ class mySerial(serial.Serial):
     def getLastLine(self):
         # read new data into buf
         self.buf = self.buf + self.read(self.in_waiting)
-        if (self.buf.count(self.delim) < 2):
+        
+        if (self.buf.count(self.delim) < 3):
             time.sleep(0.01)
             return self.getLastLine()
 
@@ -60,38 +63,42 @@ class mySerial(serial.Serial):
             self.buf = lines[-1]
             # store last line into last_line
             self.last_line = lines[-2].decode()
+            #self.reset_input_buffer()
         return self.last_line
 
+Scale_serial = mySerial(
+            port = scale_port,
+            baudrate = 2400,
+            parity = serial.PARITY_EVEN,
+            stopbits = serial.STOPBITS_ONE,
+            bytesize = serial.SEVENBITS,
+            timeout = None,
+            )
+
 def get_scale_value():
-    while 1:
-        try:
-            data = mySerial(
-                port = scale_port,
-                baudrate = 2400,
-                parity = serial.PARITY_EVEN,
-                stopbits = serial.STOPBITS_ONE,
-                bytesize = serial.SEVENBITS,
-                timeout = None,
-                ).getLastLine()
-            data = data[4:12]
-            data = float (data)
-            break
-        except:
-            continue
-
+    data = Scale_serial.getLastLine()
+    data = data.split(",")[1].split(" ")[0]
+    data = data.replace('\x00', '')
+    print (data)
+    data = float (data)
+    
     return data
-
+    
+Discharging_start_time = 0
+Filtration_pump.ChangeDutyCycle(PWM)
+time.sleep (1)
 start_time = time.time()
 last_time = start_time
 last_weight = get_scale_value() 
-time.sleep(5)
+time.sleep (5)
 
 while True:
 
     try:
         #Get time and weight data
-        current_time = time.time()
         current_weight = get_scale_value()
+        current_time = time.time()
+        now = datetime.now().strftime(TIMEFORMAT)
         if current_weight > 3500:
             GPIO.output(Discharge_pump_pin, 1)
             Filtration_pump.ChangeDutyCycle(0)
@@ -120,14 +127,14 @@ while True:
             
             Filtration_pump.ChangeDutyCycle(0)
             
-            if Discharging_start_time - current_time > 15:
-                GPIO.output(Discharge_pump_pin, 0)
-                Discharging = False
-
             if current_weight > 2500 and time_count > 500:
                 GPIO.output(Discharge_pump_pin, 1)
                 Discharging = True
                 Discharging_start_time = current_time
+
+            if Discharging_start_time - current_time > 10:
+                GPIO.output(Discharge_pump_pin, 0)
+                Discharging = False
 
         else:
             
@@ -154,15 +161,19 @@ while True:
         else:
             flowrate = flowrate_now
         
-        now = datetime.now().strftime(TIMEFORMAT)
+        p, i, d = pid.components
+
         if any(d for d in [current_time]):
             f = open(OUTPUTPATH, 'a', newline='')
             csv.writer(f).writerow([now] + [current_weight] + [flowrate_now] + [flowrate])
             f.close()
-            print (now)
-            print (flowrate_now)
-            print (PWM)
-        
+            print("{:>5.1f}\t{:>5.1f}\t{:>5.1f}\t{:>5.1f}".format(time_count,flowrate_now, current_weight, PWM))
+            #print (time_count)
+            #print("{:>5}\t{:>5.1f}".format("Flow", flowrate_now))
+            #print("{:>5}\t{:>5.1f}".format("W", current_weight))
+            #print("{:>5}\t{:>5.1f}".format("PWM",PWM))
+            #print("{:>5.1f}\t{:>5.1f}\t{:>5.1f}".format(p, i, d))
+
         last_time = current_time
         last_weight = current_weight
         
@@ -170,3 +181,8 @@ while True:
     
     except Exception as EXC:
         print (EXC)
+        error_count += 1
+
+    if error_count > 5:
+        break
+print ("STOPED")
