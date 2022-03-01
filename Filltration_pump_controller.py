@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 #Set target flowrate
-targetFlow = 30 #ml/min
+targetFlow = 26 #ml/min
 
 #Set GPIO
 Filtration_pump_pin = 13 
 Discharge_pump_pin = 19
 
 #Set up PID parameter
-PWM = 29
-P = 0.30
-I = 0.000
+PWM = 25
+P = 0.45
+I = 0.01
 D = 0.05
 
 error_count = 0
@@ -111,9 +111,10 @@ while True:
         time_count = round (current_time - start_time, 0)
         
         #Reset time count if over 10 min (600 sec)
-        if time_count >= 600:
+        if time_count >= 700:
             start_time = current_time
             time_count = 0
+            PWM = 0.6 * PWM
         
         #Caculate flowrate
         flowrate_now = ((current_weight - last_weight) *60 / (current_time - last_time))
@@ -126,11 +127,11 @@ while True:
             
             Filtration_pump.ChangeDutyCycle(0)
             
-            if time_count > 500 and time_count < 510:
+            if time_count > 500 and time_count < 520:
                 GPIO.output(Discharge_pump_pin, 1)
                 Discharging = True
 
-            if time_count > 510 and current_weight < 1500:
+            else:
                 GPIO.output(Discharge_pump_pin, 0)
                 Discharging = False
 
@@ -174,7 +175,9 @@ while True:
     except Exception as EXC:
         print (EXC)
         error_count += 1
+        continue
 
     if error_count > 5:
         break
 print ("STOPED")
+Filtration_pump.ChangeDutyCycle(0)

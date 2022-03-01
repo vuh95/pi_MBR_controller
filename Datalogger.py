@@ -34,7 +34,7 @@ chan32 = AnalogIn(ads3, ADS.P2, ADS.P3)
 chan41 = AnalogIn(ads4, ADS.P0, ADS.P1)
 chan42 = AnalogIn(ads4, ADS.P2, ADS.P3)
 
-OUTPUTPATH = "./Data/adc.csv"
+OUTPUTPATH = "./data/adc.csv"
 TIMEFORMAT = "%Y/%m/%d %H:%M:%S"
 count = 0
 check_file = os.path.exists(OUTPUTPATH)
@@ -49,9 +49,9 @@ if check_file == False: # Create file if not exist.
 else:
     print ("Output file is ready")
 while True:
-    p1 = chan11.voltage
-    p2 = chan41.voltage
-    flow_1 = chan12.voltage
+    p1 = chan11.voltage * 50 - 150
+    p2 = chan12.voltage * 50 - 150
+    flow_1 = chan41.voltage
     flow_2 = chan42.voltage
     do_1 = chan21.voltage*10/4
     temp_1 = chan22.voltage*50/5
