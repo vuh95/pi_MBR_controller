@@ -3,8 +3,8 @@
 Scale_pin = [18,15]
 Feed_pump_pin = 26 
 
-Scale_offset = -88000
-Scale_ratio = 58.114
+Scale_offset = -89000
+Scale_ratio = 58.05
 
 import RPi.GPIO as GPIO  # import GPIO
 from hx711 import HX711  # import the class HX711
@@ -34,32 +34,47 @@ except Exception as ee:
     print ("error")
 
 def get_value():
-    value = scale.get_weight_mean(5)
+    value = scale.get_weight_mean(2)
     if value != False:
         return value
     else:
-        return ""
+        return 0
 
 OUTPUTPATH = './data/data_scale.csv'
 TIMEFORMAT = "%Y/%m/%d %H:%M:%S"
 
-try:
-    while True:
+#error_count = 0
+while True:
+    try:
         now = datetime.now().strftime(TIMEFORMAT)
-        Scale_value = get_value()
-        if Scale_value == "":
+        Scale_value = []
+        for i in range (2):
+            Scale_value.append(get_value())
+            time.sleep(0.2)
+
+        Scale_value_std = np.std(Scale_value)
+        Scale_value_mean = np.mean(Scale_value)
+
+        if Scale_value_std > 10:
             continue
-        elif Scale_value < 15500:
+
+        if Scale_value_mean < 15750:
                 GPIO.output(Feed_pump_pin, 1)
-        elif Scale_value > 15800:
+        
+        if Scale_value_mean > 16000:
                 GPIO.output(Feed_pump_pin, 0)
 
         f = open(OUTPUTPATH, 'a', newline='')
-        csv.writer(f).writerow([now] + [Scale_value])
+        csv.writer(f).writerow([now] + [Scale_value_mean])
         f.close()
-        print("{:>5}\t{:>5.1f}".format(now, Scale_value))
+        print("{:>5}\t{:>5.1f}\t{:>5.1f}".format(now, Scale_value_mean, Scale_value_std))
         time.sleep(10 - time.time() % 10)
-except:
-    GPIO.output(Feed_pump_pin, 0)
+    except KeyboardInterrupt:
+        GPIO.output(Feed_pump_pin, 0)
+        break
+    except Exception as EXC:
+        print (EXC)
+        
+
 
 
